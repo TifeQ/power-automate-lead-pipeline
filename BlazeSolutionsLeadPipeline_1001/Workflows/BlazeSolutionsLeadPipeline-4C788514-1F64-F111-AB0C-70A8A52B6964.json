@@ -1,0 +1,400 @@
+{
+  "properties": {
+    "connectionReferences": {
+      "shared_microsoftforms": {
+        "api": {
+          "name": "shared_microsoftforms"
+        },
+        "connection": {
+          "connectionReferenceLogicalName": "new_sharedmicrosoftforms_96663"
+        },
+        "runtimeSource": "embedded"
+      },
+      "shared_teams": {
+        "api": {
+          "name": "shared_teams"
+        },
+        "connection": {
+          "connectionReferenceLogicalName": "new_sharedteams_5286b"
+        },
+        "runtimeSource": "embedded"
+      },
+      "shared_sharepointonline": {
+        "api": {
+          "name": "shared_sharepointonline"
+        },
+        "connection": {
+          "connectionReferenceLogicalName": "new_sharedsharepointonline_8bf94"
+        },
+        "runtimeSource": "embedded"
+      },
+      "shared_excelonlinebusiness": {
+        "api": {
+          "name": "shared_excelonlinebusiness"
+        },
+        "connection": {
+          "connectionReferenceLogicalName": "new_sharedexcelonlinebusiness_8d1eb"
+        },
+        "runtimeSource": "embedded"
+      }
+    },
+    "definition": {
+      "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+      "contentVersion": "1.0.0.0",
+      "parameters": {
+        "$authentication": {
+          "defaultValue": {},
+          "type": "SecureObject"
+        },
+        "$connections": {
+          "defaultValue": {},
+          "type": "Object"
+        }
+      },
+      "triggers": {
+        "When_a_new_response_is_submitted": {
+          "type": "OpenApiConnectionWebhook",
+          "inputs": {
+            "parameters": {
+              "form_id": "BF8F4YKzqkak3jkm80HpxBh8f0IevclHrYKZ3nBnjdRURFVKQ0VXQzFLMFBMM0hVMVVEQTlFQ1hFMS4u"
+            },
+            "host": {
+              "apiId": "/providers/Microsoft.PowerApps/apis/shared_microsoftforms",
+              "operationId": "CreateFormWebhook",
+              "connectionName": "shared_microsoftforms"
+            }
+          },
+          "splitOn": "@triggerOutputs()?['body/value']"
+        }
+      },
+      "actions": {
+        "Get_response_details": {
+          "type": "OpenApiConnection",
+          "inputs": {
+            "parameters": {
+              "form_id": "BF8F4YKzqkak3jkm80HpxBh8f0IevclHrYKZ3nBnjdRURFVKQ0VXQzFLMFBMM0hVMVVEQTlFQ1hFMS4u",
+              "response_id": "@triggerOutputs()?['body/resourceData/responseId']"
+            },
+            "host": {
+              "apiId": "/providers/Microsoft.PowerApps/apis/shared_microsoftforms",
+              "operationId": "GetFormResponseById",
+              "connectionName": "shared_microsoftforms"
+            }
+          },
+          "runAfter": {}
+        },
+        "Initialize_variable": {
+          "type": "InitializeVariable",
+          "inputs": {
+            "variables": [
+              {
+                "name": "lead_score",
+                "type": "integer",
+                "value": 0
+              }
+            ]
+          },
+          "runAfter": {
+            "Get_response_details": [
+              "Succeeded"
+            ]
+          }
+        },
+        "Country_Condition": {
+          "type": "If",
+          "expression": {
+            "and": [
+              {
+                "equals": [
+                  "@outputs('Get_response_details')?['body/r3602f3baa83249ababadd8842249c1e3']",
+                  "Nigeria"
+                ]
+              }
+            ]
+          },
+          "actions": {
+            "Increment_by_30": {
+              "type": "IncrementVariable",
+              "inputs": {
+                "name": "lead_score",
+                "value": 30
+              }
+            }
+          },
+          "else": {
+            "actions": {
+              "Increment_by_10": {
+                "type": "IncrementVariable",
+                "inputs": {
+                  "name": "lead_score",
+                  "value": 10
+                }
+              }
+            }
+          },
+          "runAfter": {
+            "Budget_Condition": [
+              "SUCCEEDED"
+            ]
+          }
+        },
+        "Service_Condition": {
+          "type": "If",
+          "expression": {
+            "and": [
+              {
+                "equals": [
+                  "@outputs('Get_response_details')?['body/r69081134b94349409d8113c9658e7100']",
+                  "Automation"
+                ]
+              }
+            ]
+          },
+          "actions": {
+            "Increment_variable_4": {
+              "type": "IncrementVariable",
+              "inputs": {
+                "name": "lead_score",
+                "value": 30
+              }
+            }
+          },
+          "else": {
+            "actions": {
+              "Increment_variable_5": {
+                "type": "IncrementVariable",
+                "inputs": {
+                  "name": "lead_score",
+                  "value": 10
+                }
+              }
+            }
+          },
+          "runAfter": {
+            "Country_Condition": [
+              "Succeeded"
+            ]
+          }
+        },
+        "Switch": {
+          "type": "Switch",
+          "expression": "@outputs('Aggregating_Lead_score_to_Hot,_cold_and_Invalid')",
+          "default": {
+            "actions": {}
+          },
+          "cases": {
+            "Hot": {
+              "actions": {
+                "Post_message_in_a_chat_or_channel": {
+                  "type": "OpenApiConnection",
+                  "inputs": {
+                    "parameters": {
+                      "poster": "Flow bot",
+                      "location": "Channel",
+                      "body/recipient/groupId": "c452a8c6-7ec4-458e-bf12-0a58eef853cf",
+                      "body/recipient/channelId": "19:x6Q9PCQKrW6Rr_hw7pB50IO25TgEx-4YBYZrKAIuKIY1@thread.tacv2",
+                      "body/messageBody": "<p class=\"editor-paragraph\">🔥 Hot Lead Alert!</p><p class=\"editor-paragraph\">Name: @{outputs('Get_response_details')?['body/r6fa110cc6ae744848017c7db4e2e2f2f']}</p><p class=\"editor-paragraph\">Email:  @{outputs('Get_response_details')?['body/rb6019294c67243d1afc614ef8b8f01bd']}</p><p class=\"editor-paragraph\">Score:  @{variables('lead_score')}</p>"
+                    },
+                    "host": {
+                      "apiId": "/providers/Microsoft.PowerApps/apis/shared_teams",
+                      "operationId": "PostMessageToConversation",
+                      "connectionName": "shared_teams"
+                    }
+                  }
+                },
+                "Create_Hot_List": {
+                  "type": "OpenApiConnection",
+                  "inputs": {
+                    "parameters": {
+                      "dataset": "https://7blmnf.sharepoint.com",
+                      "table": "52786ef9-f520-4fc4-838c-35fa79ff2654",
+                      "item/Title": "@outputs('Get_response_details')?['body/r6fa110cc6ae744848017c7db4e2e2f2f']",
+                      "item/Email": "@outputs('Get_response_details')?['body/rb6019294c67243d1afc614ef8b8f01bd']",
+                      "item/Company": "@outputs('Get_response_details')?['body/ra8b0a1cb864b456fbd61ece77213b2e0']",
+                      "item/Budget_x0028_USD_x0029_": "@int(outputs('Get_response_details')?['body/rd197d16a5716475eb29b23d577eb955d'])",
+                      "item/Country": "@outputs('Get_response_details')?['body/r3602f3baa83249ababadd8842249c1e3']",
+                      "item/Service": "@outputs('Get_response_details')?['body/r69081134b94349409d8113c9658e7100']",
+                      "item/Score": "@variables('lead_score')",
+                      "item/Status/Value": "Hot",
+                      "item/Timestamp": "@utcNow()",
+                      "item/{ContentType}/Id": "0x0100657870AB85E0BF43AF8D2A5FEB9F1EF9005B0A89A08354EA4195E9B6D92750CC07"
+                    },
+                    "host": {
+                      "apiId": "/providers/Microsoft.PowerApps/apis/shared_sharepointonline",
+                      "operationId": "PostItem",
+                      "connectionName": "shared_sharepointonline"
+                    }
+                  },
+                  "runAfter": {
+                    "Post_message_in_a_chat_or_channel": [
+                      "Succeeded"
+                    ]
+                  }
+                }
+              },
+              "case": "Hot"
+            },
+            "Cold": {
+              "actions": {
+                "Post_message_in_a_chat_or_channel_1": {
+                  "type": "OpenApiConnection",
+                  "inputs": {
+                    "parameters": {
+                      "poster": "Flow bot",
+                      "location": "Channel",
+                      "body/recipient/groupId": "c452a8c6-7ec4-458e-bf12-0a58eef853cf",
+                      "body/recipient/channelId": "19:x6Q9PCQKrW6Rr_hw7pB50IO25TgEx-4YBYZrKAIuKIY1@thread.tacv2",
+                      "body/messageBody": "<p class=\"editor-paragraph\">🧊 Cold Lead</p><p class=\"editor-paragraph\">Name: @{outputs('Get_response_details')?['body/r6fa110cc6ae744848017c7db4e2e2f2f']}</p><p class=\"editor-paragraph\">Email: @{outputs('Get_response_details')?['body/rb6019294c67243d1afc614ef8b8f01bd']}</p><p class=\"editor-paragraph\">Score: @{variables('lead_score')}</p>"
+                    },
+                    "host": {
+                      "apiId": "/providers/Microsoft.PowerApps/apis/shared_teams",
+                      "operationId": "PostMessageToConversation",
+                      "connectionName": "shared_teams"
+                    }
+                  }
+                },
+                "Create_Cold_List": {
+                  "type": "OpenApiConnection",
+                  "inputs": {
+                    "parameters": {
+                      "dataset": "https://7blmnf.sharepoint.com",
+                      "table": "52786ef9-f520-4fc4-838c-35fa79ff2654",
+                      "item/Title": "@outputs('Get_response_details')?['body/r6fa110cc6ae744848017c7db4e2e2f2f']",
+                      "item/Email": "@outputs('Get_response_details')?['body/rb6019294c67243d1afc614ef8b8f01bd']",
+                      "item/Company": "@outputs('Get_response_details')?['body/ra8b0a1cb864b456fbd61ece77213b2e0']",
+                      "item/Budget_x0028_USD_x0029_": "@int(outputs('Get_response_details')?['body/rd197d16a5716475eb29b23d577eb955d'])",
+                      "item/Country": "@outputs('Get_response_details')?['body/r3602f3baa83249ababadd8842249c1e3']",
+                      "item/Service": "@outputs('Get_response_details')?['body/r69081134b94349409d8113c9658e7100']",
+                      "item/Score": "@variables('lead_score')",
+                      "item/Status/Value": "Cold",
+                      "item/Timestamp": "@{utcNow()} "
+                    },
+                    "host": {
+                      "apiId": "/providers/Microsoft.PowerApps/apis/shared_sharepointonline",
+                      "operationId": "PostItem",
+                      "connectionName": "shared_sharepointonline"
+                    }
+                  },
+                  "runAfter": {
+                    "Post_message_in_a_chat_or_channel_1": [
+                      "Succeeded"
+                    ]
+                  }
+                }
+              },
+              "case": "Cold"
+            },
+            "Invalid": {
+              "actions": {
+                "Post_message_in_a_chat_or_channel_2": {
+                  "type": "OpenApiConnection",
+                  "inputs": {
+                    "parameters": {
+                      "poster": "Flow bot",
+                      "location": "Channel",
+                      "body/recipient/groupId": "c452a8c6-7ec4-458e-bf12-0a58eef853cf",
+                      "body/recipient/channelId": "19:x6Q9PCQKrW6Rr_hw7pB50IO25TgEx-4YBYZrKAIuKIY1@thread.tacv2",
+                      "body/messageBody": "<p class=\"editor-paragraph\">⚠️ Invalid Lead Submission: @{outputs('Get_response_details')?['body/r6fa110cc6ae744848017c7db4e2e2f2f']} Email: @{outputs('Get_response_details')?['body/rb6019294c67243d1afc614ef8b8f01bd']} + — failed validation</p>"
+                    },
+                    "host": {
+                      "apiId": "/providers/Microsoft.PowerApps/apis/shared_teams",
+                      "operationId": "PostMessageToConversation",
+                      "connectionName": "shared_teams"
+                    }
+                  }
+                }
+              },
+              "case": "Invalid"
+            }
+          },
+          "runAfter": {
+            "Aggregating_Lead_score_to_Hot,_cold_and_Invalid": [
+              "Succeeded"
+            ]
+          }
+        },
+        "Aggregating_Lead_score_to_Hot,_cold_and_Invalid": {
+          "type": "Compose",
+          "inputs": "@if(greaterOrEquals(variables('lead_score'), 70), 'Hot', if(greaterOrEquals(variables('lead_score'), 31), 'Cold', 'Invalid'))",
+          "runAfter": {
+            "Service_Condition": [
+              "Succeeded"
+            ]
+          }
+        },
+        "Update_Leads_in_Excel": {
+          "type": "OpenApiConnection",
+          "inputs": {
+            "parameters": {
+              "source": "me",
+              "drive": "b!utqzwIeZWU-yPpEEWO-sGNsR3ecmiZlIliZd_mYJRVWsyoAU0N81T7DEf6WadMLJ",
+              "file": "015ILCAERVHENNVVQMIBFK57CLRK2YNSK7",
+              "table": "{E87A5401-7C6D-4C23-801E-1AB28DCA74BA}",
+              "item/Timestamp": "@utcNow()",
+              "item/Name": "@outputs('Get_response_details')?['body/r6fa110cc6ae744848017c7db4e2e2f2f']",
+              "item/Email": "@outputs('Get_response_details')?['body/rb6019294c67243d1afc614ef8b8f01bd']",
+              "item/Score": "@variables('lead_score')",
+              "item/Route": "@outputs('Aggregating_Lead_score_to_Hot,_cold_and_Invalid')",
+              "item/Status": "Success"
+            },
+            "host": {
+              "apiId": "/providers/Microsoft.PowerApps/apis/shared_excelonlinebusiness",
+              "operationId": "AddRowV2",
+              "connectionName": "shared_excelonlinebusiness"
+            }
+          },
+          "runAfter": {
+            "Switch": [
+              "Succeeded"
+            ]
+          },
+          "metadata": {
+            "015ILCAERVHENNVVQMIBFK57CLRK2YNSK7": "/Lead Audit Log.xlsx",
+            "tableId": "{E87A5401-7C6D-4C23-801E-1AB28DCA74BA}"
+          }
+        },
+        "Budget_Condition": {
+          "type": "If",
+          "expression": {
+            "and": [
+              {
+                "greaterOrEquals": [
+                  "@int(outputs('Get_response_details')?['body/rd197d16a5716475eb29b23d577eb955d'])",
+                  2000
+                ]
+              }
+            ]
+          },
+          "actions": {
+            "Lead_score_+30": {
+              "type": "IncrementVariable",
+              "inputs": {
+                "name": "lead_score",
+                "value": 30
+              }
+            }
+          },
+          "else": {
+            "actions": {
+              "Lead_score_+10": {
+                "type": "IncrementVariable",
+                "inputs": {
+                  "name": "lead_score",
+                  "value": 10
+                }
+              }
+            }
+          },
+          "runAfter": {
+            "Initialize_variable": [
+              "Succeeded"
+            ]
+          }
+        }
+      },
+      "outputs": {}
+    },
+    "templateName": null
+  },
+  "schemaVersion": "1.0.0.0"
+}
